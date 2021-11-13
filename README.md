@@ -4,19 +4,19 @@
 This repository is built upon [BEiT](https://github.com/microsoft/unilm/tree/master/beit), thanks very much!
 
 
-Now, we only implement the pretrain process according to the paper.
+Now, we only implement the pretrain process according to the paper, and **can't guarantee** the performance reported in the paper can be reproduced!
 
 ## Difference
-At the same time, `shuffle` and `unsshuffle` operations don't seem to be directly accessible in pytorch, so we use another method to realize this process:
+At the same time, `shuffle` and `unshuffle` operations don't seem to be directly accessible in pytorch, so we use another method to realize this process:
 + For `shuffle`, we used the method of randomly generating mask-map (14x14) in BEiT, where `mask=0` illustrates keep the token, `mask=1` denotes drop the token (not participating caculation in Encoder). Then all visible tokens (`mask=0`) are put into encoder network.
 + For `unshuffle`, we get the postion embeddings (with adding the shared mask token) of all mask tokens according to the mask-map and then concate them with the visible tokens (from encoder), and put them into the decoder network to recontrust.
 
 ## TODO
-1. implement the finetune process
-2. reuse the model in `modeling_pretrain.py`
-3. caculate the normalized pixels target
-4. add the `cls` token in the encoder
-5. ...
+- [ ] implement the finetune process
+- [ ] reuse the model in `modeling_pretrain.py`
+- [x] caculate the normalized pixels target
+- [ ] add the `cls` token in the encoder
+- [ ] ...
 
 ## Setup
 

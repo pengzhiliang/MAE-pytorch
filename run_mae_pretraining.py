@@ -1,14 +1,11 @@
 # --------------------------------------------------------
-# BEIT: BERT Pre-Training of Image Transformers (https://arxiv.org/abs/2106.08254)
-# Github source: https://github.com/microsoft/unilm/tree/master/beit
-# Copyright (c) 2021 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# By Hangbo Bao
-# Based on timm, DINO and DeiT code bases
+# Based on BEiT, timm, DINO and DeiT code bases
+# https://github.com/microsoft/unilm/tree/master/beit
 # https://github.com/rwightman/pytorch-image-models/tree/master/timm
 # https://github.com/facebookresearch/deit
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
+
 import argparse
 import datetime
 import numpy as np
@@ -48,6 +45,9 @@ def get_args():
 
     parser.add_argument('--drop_path', type=float, default=0.0, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
+                        
+    parser.add_argument('--normlize_target', default=True, type=bool,
+                        help='normalized the target patch pixels')
 
     # Optimizer parameters
     parser.add_argument('--opt', default='adamw', type=str, metavar='OPTIMIZER',
@@ -234,6 +234,8 @@ def main(args):
             start_steps=epoch * num_training_steps_per_epoch,
             lr_schedule_values=lr_schedule_values,
             wd_schedule_values=wd_schedule_values,
+            patch_size=patch_size[0],
+            normlize_target=args.normlize_target,
         )
         if args.output_dir:
             if (epoch + 1) % args.save_ckpt_freq == 0 or epoch + 1 == args.epochs:

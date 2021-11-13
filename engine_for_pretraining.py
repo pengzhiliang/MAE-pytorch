@@ -1,12 +1,8 @@
 # --------------------------------------------------------
-# BEIT: BERT Pre-Training of Image Transformers (https://arxiv.org/abs/2106.08254)
-# Github source: https://github.com/microsoft/unilm/tree/master/beit
-# Copyright (c) 2021 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# By Hangbo Bao
-# Based on timm, DINO and DeiT code bases
+# Based on BEiT, timm, DINO and DeiT code bases
+# https://github.com/microsoft/unilm/tree/master/beit
 # https://github.com/rwightman/pytorch-image-models/tree/master/timm
-# https://github.com/facebookresearch/deit/
+# https://github.com/facebookresearch/deit
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
 import math
@@ -21,8 +17,8 @@ from einops import rearrange
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: torch.optim.Optimizer,
-                    device: torch.device, epoch: int, loss_scaler, max_norm: float = 0,
-                    log_writer=None, lr_scheduler=None, start_steps=None,
+                    device: torch.device, epoch: int, loss_scaler, max_norm: float = 0, patch_size: int = 16, 
+                    normlize_target: bool = True, log_writer=None, lr_scheduler=None, start_steps=None,
                     lr_schedule_values=None, wd_schedule_values=None):
     model.train()
     metric_logger = utils.MetricLogger(delimiter="  ")
@@ -52,13 +48,19 @@ def train_one_epoch(model: torch.nn.Module, data_loader: Iterable, optimizer: to
             # calculate the predict label
             mean = torch.as_tensor(IMAGENET_DEFAULT_MEAN).to(device)[None, :, None, None]
             std = torch.as_tensor(IMAGENET_DEFAULT_STD).to(device)[None, :, None, None]
-            unnorm_images = images * std + mean
+            unnorm_images = images * std + mean  # in [0, 1]
 
-            images_patch = rearrange(unnorm_images, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=16, p2=16)
+            if normlize_target:
+                images_squeeze = rearrange(unnorm_images, 'b c (h p1) (w p2) -> b (h w) (p1 p2) c', p1=patch_size, p2=patch_size)
+                images_norm = (images_squeeze - images_squeeze.mean(dim=-2, keepdim=True)
+                    ) / (images_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6)
+                # we find that the mean is about 0.48 and standard deviation is about 0.08.
+                images_patch = rearrange(images_norm, 'b n p c -> b n (p c)')
+            else:
+                images_patch = rearrange(unnorm_images, 'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', p1=patch_size, p2=patch_size)
+
             B, _, C = images_patch.shape
             labels = images_patch[bool_masked_pos].reshape(B, -1, C)
-
-            # TODO: caculate the normalized pixels target
 
         with torch.cuda.amp.autocast():
             outputs = model(images, bool_masked_pos)

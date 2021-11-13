@@ -1,12 +1,9 @@
 # --------------------------------------------------------
-# BEIT: BERT Pre-Training of Image Transformers (https://arxiv.org/abs/2106.08254)
-# Github source: https://github.com/microsoft/unilm/tree/master/beit
-# Copyright (c) 2021 Microsoft
-# Licensed under The MIT License [see LICENSE for details]
-# By Hangbo Bao
-# Based on timm and DeiT code bases
+# Based on BEiT, timm, DINO and DeiT code bases
+# https://github.com/microsoft/unilm/tree/master/beit
 # https://github.com/rwightman/pytorch-image-models/tree/master/timm
-# https://github.com/facebookresearch/deit/
+# https://github.com/facebookresearch/deit
+# https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
 import math
 import torch
