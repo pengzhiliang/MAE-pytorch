@@ -1,10 +1,15 @@
 
 # Unofficial PyTorch implementation of [Masked Autoencoders Are Scalable Vision Learners](https://arxiv.org/abs/2111.06377)
 
-This repository is built upon [BEiT](https://github.com/microsoft/unilm/tree/master/beit), thanks very mush!
+This repository is built upon [BEiT](https://github.com/microsoft/unilm/tree/master/beit), thanks very much!
 
 
 Now, we only implement the pretrain process according to the paper.
+
+## Difference
+At the same time, `shuffle` and `unsshuffle` operations donot seem to be directly accessible in pytorch, so we use another method to realize this process:
++ For `shuffle`, we used the method of randomly generating mask-map (14x14) in BEiT, where `mask=0` illustrates keep the token, `mask=1` denotes drop the token (not participating caculation in Encoder). Then all visible tokens (`mask=0`) are put into encoder network.
++ For `unshuffle`, we get the postion embeddings (with adding the shared mask token) of all mask tokens according to the mask-map and then concate them with the visible tokens (from encoder), and put them into the decoder network to recontrust.
 
 ## TODO
 1. implement the finetune process
