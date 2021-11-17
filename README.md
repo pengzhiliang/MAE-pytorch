@@ -12,7 +12,7 @@ At the same time, `shuffle` and `unshuffle` operations don't seem to be directly
 + For `unshuffle`, we get the postion embeddings (with adding the shared mask token) of all mask tokens according to the mask-map and then concate them with the visible tokens (from encoder), and put them into the decoder network to recontrust.
 
 ## TODO
-- [ ] implement the finetune process
+- [ ] implement the finetune process 
 - [ ] reuse the model in `modeling_pretrain.py`
 - [x] caculate the normalized pixels target
 - [ ] add the `cls` token in the encoder
@@ -44,4 +44,10 @@ OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=8 run_mae_
         --output_dir ${OUTPUT_DIR}
 ```
 
-Note: the pretrain result is on the way ~
+## Result
+
+|   model  | pretrain | finetune | accuracy |
+|:--------:|:--------:|:--------:|:--------:|
+| vit-base |   400e   |   100e   |   83.1%  |
+
+(the full code of finetune will be released tommorw or the day after tommorw)
