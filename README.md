@@ -24,6 +24,7 @@ The positional embeddings mentioned in the paper is `sine-cosine version`. And w
 - [x] caculate the normalized pixels target
 - [ ] add the `cls` token in the encoder
 - [ ] visualization of reconstruction image
+- [ ] knn and linear prob
 - [ ] ...
 
 ## Setup
@@ -78,7 +79,7 @@ OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=8 run_clas
 
 ## Result
 
-|   model  | pretrain | finetune | accuracy | log | model |
+|   model  | pretrain | finetune | accuracy | log | weight |
 |:--------:|:--------:|:--------:|:--------:| :--------:|:--------:|
 | vit-base |   400e   |   100e   |   83.1%  | [pretrain](files/pretrain_base_0.75_400e.txt) [finetune](files/pretrain_base_0.75_400e_finetune_100e.txt)| on the way |
 
@@ -86,4 +87,4 @@ Due to the limited gpus, it's really a chanllenge for us to pretrain with larger
 
 So if one can fininsh it, please feel free report it in the issue or push a PR, thank you!
 
-And your star is my motivation, hh~
+And your star is my motivation, thank u~
