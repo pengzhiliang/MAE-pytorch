@@ -62,7 +62,7 @@ DATA_PATH='/path/to/ImageNet_ILSVRC2012'
 # path to pretrain model
 MODEL_PATH='/path/to/pretrain/checkpoint.pth'
 
-OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=8 --master_port 50130 run_class_finetuning.py \
+OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=8 run_class_finetuning.py \
     --model vit_base_patch16_224 \
     --data_path ${DATA_PATH} \
     --finetune ${MODEL_PATH} \
@@ -80,7 +80,7 @@ OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=8 --master
 
 |   model  | pretrain | finetune | accuracy | log | model |
 |:--------:|:--------:|:--------:|:--------:| :--------:|:--------:|
-| vit-base |   400e   |   100e   |   83.1%  | on the way | on the way |
+| vit-base |   400e   |   100e   |   83.1%  | [pretrain](files/pretrain_base_0.75_400e.txt) [finetune](files/pretrain_base_0.75_400e_finetune_100e.txt)| on the way |
 
 Due to the limited gpus, it's really a chanllenge for us to pretrain with larger model or longer schedule mentioned in the paper. 
 
