@@ -33,7 +33,7 @@ import modeling_finetune
 
 
 def get_args():
-    parser = argparse.ArgumentParser('BEiT fine-tuning and evaluation script for image classification', add_help=False)
+    parser = argparse.ArgumentParser('MAE fine-tuning and evaluation script for image classification', add_help=False)
     parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--epochs', default=30, type=int)
     parser.add_argument('--update_freq', default=1, type=int)

@@ -36,12 +36,15 @@ from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 def get_args():
     parser = argparse.ArgumentParser('MAE visualization reconstruction script', add_help=False)
+    parser.add_argument('img_path', type=str, help='input image path')
+    parser.add_argument('save_path', type=str, help='save image path')
+    parser.add_argument('model_path', type=str, help='checkpoint path of model')
+
     parser.add_argument('--input_size', default=224, type=int,
                         help='images input size for backbone')
     parser.add_argument('--device', default='cuda:0',
                         help='device to use for training / testing')
     parser.add_argument('--imagenet_default_mean_and_std', default=True, action='store_true')
-    parser.add_argument('--img_path', type=str, help='img_path')
     parser.add_argument('--mask_ratio', default=0.75, type=float,
                         help='ratio of the visual tokens/patches need be masked')
     # Model parameters
@@ -49,7 +52,7 @@ def get_args():
                         help='Name of model to vis')
     parser.add_argument('--drop_path', type=float, default=0.0, metavar='PCT',
                         help='Drop path rate (default: 0.1)')
-    parser.add_argument('--model_path', type=str, help='checkpoint of model')
+    
     return parser.parse_args()
 
 
@@ -103,7 +106,7 @@ def main(args):
         std = torch.as_tensor(IMAGENET_DEFAULT_STD).to(device)[None, :, None, None]
         ori_img = img * std + mean  # in [0, 1]
         img = ToPILImage()(ori_img[0, :])
-        img.save("ori_img.jpg")
+        img.save(f"{args.save_path}/ori_img.jpg")
 
         img_squeeze = rearrange(ori_img, 'b c (h p1) (w p2) -> b (h w) (p1 p2) c', p1=patch_size[0], p2=patch_size[0])
         img_norm = (img_squeeze - img_squeeze.mean(dim=-2, keepdim=True)) / (img_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6)
@@ -121,12 +124,12 @@ def main(args):
         rec_img = rec_img * (img_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6) + img_squeeze.mean(dim=-2, keepdim=True)
         rec_img = rearrange(rec_img, 'b (h w) (p1 p2) c -> b c (h p1) (w p2)', p1=patch_size[0], p2=patch_size[1], h=14, w=14)
         img = ToPILImage()(rec_img[0, :])
-        img.save("rec_img.jpg")
+        img.save(f"{args.save_path}/rec_img.jpg")
 
         #save random mask img
         img_mask = rec_img * mask
         img = ToPILImage()(img_mask[0, :])
-        img.save("mask_img.jpg")
+        img.save(f"{args.save_path}/mask_img.jpg")
 
 if __name__ == '__main__':
     opts = get_args()
