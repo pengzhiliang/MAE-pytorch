@@ -1,0 +1,9 @@
+*.swp
+**/__pycache__/**
+imnet_resnet50_scratch/timm_temp/
+.dumbo.json
+checkpoints/
+.idea/*
+**/.ipynb_checkpoints/**
+run.sh
+output/
