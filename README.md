@@ -95,8 +95,9 @@ python run_mae_vis.py ${IMAGE_PATH} ${OUTPUT_DIR} ${MODEL_PATH}
 |   model  | pretrain | finetune | accuracy | log | weight |
 |:--------:|:--------:|:--------:|:--------:| :--------:|:--------:|
 | vit-base |   400e   |   100e   |   83.1%  | [pretrain](files/pretrain_base_0.75_400e.txt) [finetune](files/pretrain_base_0.75_400e_finetune_100e.txt)| [Google drive](https://drive.google.com/drive/folders/182F5SLwJnGVngkzguTelja4PztYLTXfa?usp=sharing) |
+| vit-large | 400e | 50e | 84.5% | unavailable | unavailable |
 
-Due to the limited gpus, it's really a chanllenge for us to pretrain with larger model or longer schedule mentioned in the paper. 
+Due to the limited gpus, it's really a chanllenge for us to pretrain with larger model or longer schedule mentioned in the paper. (the pretraining and end-to-end finet-tuning process of vit-large model are fininshed by a enthusiastic handsome guy with many v100, but the logs and weights are unavailable)
 
 So if one can fininsh it, please feel free to report it in the issue or push a PR, thank you!
 
