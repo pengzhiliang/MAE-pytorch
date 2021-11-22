@@ -274,9 +274,10 @@ class VisionTransformer(nn.Module):
         for blk in self.blocks:
             x = blk(x)
 
+        x = self.norm(x)
         if self.fc_norm is not None:
-            t = x[:, 1:, :]
-            return self.fc_norm(t.mean(1))
+            # return self.fc_norm(x[:, 1:].mean(1))
+            return self.fc_norm(x.mean(1))
         else:
             return x[:, 0]
 
