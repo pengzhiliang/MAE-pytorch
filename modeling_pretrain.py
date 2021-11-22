@@ -174,7 +174,7 @@ class PretrainVisionTransformerDecoder(nn.Module):
 class PretrainVisionTransformer(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
-    def __init__(self, 
+    def __init__(self,
                  img_size=224, 
                  patch_size=16, 
                  encoder_in_chans=3, 
@@ -194,7 +194,9 @@ class PretrainVisionTransformer(nn.Module):
                  drop_path_rate=0., 
                  norm_layer=nn.LayerNorm, 
                  init_values=0.,
-                 use_learnable_pos_emb=False):
+                 use_learnable_pos_emb=False,
+                 num_classes=0, # avoid the error from create_fn in timm
+                 ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
             img_size=img_size, 
