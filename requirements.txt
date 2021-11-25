@@ -1,6 +1,6 @@
 torch>=1.7.1 ##I used torch==1.8.1 and it can run well.
 torchvision>=0.8.2
-timm==0.14.12
+timm==0.4.12
 Pillow
 blobfile
 mypy
