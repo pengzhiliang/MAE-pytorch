@@ -1,5 +1,5 @@
 torch>=1.7.1 ##I used torch==1.8.1 and it can run well.
-torchvision>=0.8.2
+torchvision>=0.8.2 ##I used torch==0.9.1 and it can run well.
 timm==0.4.12
 Pillow
 blobfile
