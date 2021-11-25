@@ -196,6 +196,7 @@ class PretrainVisionTransformer(nn.Module):
                  init_values=0.,
                  use_learnable_pos_emb=False,
                  num_classes=0, # avoid the error from create_fn in timm
+                 in_chans=0, # avoid the error from create_fn in timm
                  ):
         super().__init__()
         self.encoder = PretrainVisionTransformerEncoder(
