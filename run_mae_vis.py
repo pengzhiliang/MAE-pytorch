@@ -124,7 +124,7 @@ def main(args):
         # Notice: To visualize the reconstruction image, we add the predict and the original mean and var of each patch. Issue #40
         rec_img = rec_img * (img_squeeze.var(dim=-2, unbiased=True, keepdim=True).sqrt() + 1e-6) + img_squeeze.mean(dim=-2, keepdim=True)
         rec_img = rearrange(rec_img, 'b (h w) (p1 p2) c -> b c (h p1) (w p2)', p1=patch_size[0], p2=patch_size[1], h=14, w=14)
-        img = ToPILImage()(rec_img[0, :])
+        img = ToPILImage()(rec_img[0, :].clip(0,0.996))
         img.save(f"{args.save_path}/rec_img.jpg")
 
         #save random mask img
