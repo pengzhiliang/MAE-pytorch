@@ -16,6 +16,7 @@ Now, we implement the pretrain and finetune process according to the paper, but 
 ### sine-cosine positional embeddings
 
 The positional embeddings mentioned in the paper are `sine-cosine` version. And we adopt the implemention of [here](https://github.com/jadore801120/attention-is-all-you-need-pytorch/blob/master/transformer/Models.py#L31), but it seems like a 1-D embeddings not 2-D's. So we don't know what effect it will bring.
+And I find the 2D's sine-cosine positional embeddings in [MoCoV3](https://github.com/facebookresearch/moco-v3/blob/c349e6e24f40d3fedb22d973f92defa4cedf37a7/vits.py?_pjax=%23js-repo-pjax-container%2C%20div%5Bitemtype%3D%22http%3A%2F%2Fschema.org%2FSoftwareSourceCode%22%5D%20main%2C%20%5Bdata-pjax-container%5D#L53). If someone is interested, you can try it.
 
 
 ## TODO

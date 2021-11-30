@@ -22,6 +22,8 @@ import torch
 import torch.distributed as dist
 from torch._six import inf
 
+import random
+
 from tensorboardX import SummaryWriter
 
 
@@ -194,7 +196,11 @@ class TensorboardLogger(object):
     def flush(self):
         self.writer.flush()
 
-
+def seed_worker(worker_id):
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+    
 def _load_checkpoint_for_ema(model_ema, checkpoint):
     """
     Workaround for ModelEma._load_checkpoint to accept an already-loaded object
