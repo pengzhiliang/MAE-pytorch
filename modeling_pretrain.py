@@ -6,6 +6,7 @@
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
 import math
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,6 +21,72 @@ from timm.models.layers import trunc_normal_ as __call_trunc_normal_
 def trunc_normal_(tensor, mean=0., std=1.):
     __call_trunc_normal_(tensor, mean=mean, std=std, a=-std, b=std)
 
+def get_area_encoding(num_patches, encoding_dim=192, mode='aaud', img_size=224):
+    assert mode in ['aaud', 'naive']
+    num_patches_per_row = int(num_patches ** 0.5)
+    patch_pos = torch.arange(num_patches_per_row, dtype=float) / num_patches_per_row # [0, 1/14, 2/14, ... 13/14]
+    patch_pos_pair = torch.cartesian_prod(patch_pos, patch_pos) # [[0, 0], [0, 1/14], ... [n/14, m/14], ... [13/14, 13/14]]
+    patch_area_pair = torch.zeros(len(patch_pos_pair), 4)
+    patch_area_pair[:, 0] = patch_pos_pair[:, 0]
+    patch_area_pair[:, 1] = patch_pos_pair[:, 0] + 1 / num_patches_per_row
+    patch_area_pair[:, 2] = patch_pos_pair[:, 1]
+    patch_area_pair[:, 3] = patch_pos_pair[:, 1] + 1 / num_patches_per_row
+    pos_embed = nn.Parameter(torch.zeros(1, num_patches, encoding_dim), requires_grad=False)
+    if mode == 'aaud':
+        pos_embed[0, :, :] = get_aaud_for_patch(patch_area_pair, encoding_dim)
+    if mode == 'naive':
+        patch_size = img_size // num_patches
+        sin_table = get_sinusoid_encoding_table(img_size ** 2, encoding_dim)
+        sin_table_2d = torch.reshape(sin_table, (img_size, img_size, encoding_dim))
+        pos_embed[0, :, :] = get_naive_ae_for_patch((patch_area_pair * img_size).int(),
+                                                    encoding_dim, 
+                                                    sin_table_2d)
+
+    return pos_embed
+
+def get_aaud_for_patch(pos, encoding_dim=192):
+    """
+    pos_info : (num_of_patches, 4)
+    ae : (num_of_patches, encoding_dim)
+    """
+    x_start, x_end, y_start, y_end = pos[:, 0], pos[:, 1], pos[:, 2], pos[:, 3]
+    x_start, x_end, y_start, y_end = x_start[:, None], x_end[:, None], y_start[:, None], y_end[:, None]
+
+    # IN PROGRESS: experiments on scale of coefficient
+    # x_coeff = 1 / ((x_end - x_start) * 4)
+    # y_coeff = 1 / ((y_end - y_start) * 4)
+    x_coeff = 1 / ((x_end - x_start) * 4 * np.pi)
+    y_coeff = 1 / ((y_end - y_start) * 4 * np.pi)
+    # x_coeff = 1 / ((x_end - x_start) * 4 * np.pi ** 2)
+    # y_coeff = 1 / ((y_end - y_start) * 4 * np.pi ** 2)
+    x_theta_1 = 2 * np.pi * x_start
+    x_theta_2 = 2 * np.pi * x_end
+    y_theta_1 = 2 * np.pi * y_start
+    y_theta_2 = 2 * np.pi * y_end
+
+    m = torch.arange(encoding_dim // 4, dtype=float)[None, :] + 1 # degrees for fourier series 
+    x_a_m = x_coeff * ((torch.sin(m * x_theta_2) - torch.sin(m * x_theta_1)) / m)
+    x_b_m = x_coeff * ((torch.cos(m * x_theta_1) - torch.cos(m * x_theta_2)) / m)
+    y_a_m = x_coeff * ((torch.sin(m * y_theta_2) - torch.sin(m * y_theta_1)) / m)
+    y_b_m = x_coeff * ((torch.sin(m * y_theta_1) - torch.sin(m * y_theta_2)) / m)
+    ae = torch.cat([x_a_m, x_b_m, y_a_m, y_b_m], dim=-1)
+
+    return ae
+
+def get_naive_ae_for_patch(pos, encoding_dim=192, sin_table_2d=None):
+    """
+    pos_info : (num_of_patches, 4)
+    sin_table_2d = (img_size, img_size, encoding_dim)
+    ae : (num_of_patches, encoding_dim)
+    """
+    x_start, x_end, y_start, y_end = pos[:, 0], pos[:, 1], pos[:, 2], pos[:, 3]
+
+    # TODO: parallelize
+    ae = torch.zeros(len(pos), encoding_dim)
+    for i in range(len(pos)):
+        ae[i] = torch.mean(sin_table_2d[x_start[i]: x_end[i], y_start[i]: y_end[i]], axis=(0, 1))
+
+    return ae
 
 __all__ = [
     'pretrain_mae_base_patch16_224', 
@@ -33,7 +100,7 @@ class PretrainVisionTransformerEncoder(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=0, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0., norm_layer=nn.LayerNorm, init_values=None,
-                 use_learnable_pos_emb=False):
+                 use_learnable_pos_emb=False, pos_emb_type="sin"):
         super().__init__()
         self.num_classes = num_classes
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
@@ -47,8 +114,13 @@ class PretrainVisionTransformerEncoder(nn.Module):
         if use_learnable_pos_emb:
             self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
         else:
-            # sine-cosine positional embeddings 
-            self.pos_embed = get_sinusoid_encoding_table(num_patches, embed_dim)
+            if pos_emb_type == "aaud":
+                self.pos_embed = get_area_encoding(num_patches, embed_dim, mode='aaud')
+            elif pos_emb_type == "naive":
+                self.pos_embed = get_area_encoding(num_patches, embed_dim, mode='naive', img_size=img_size)
+            elif pos_emb_type == "sin":
+                # sine-cosine positional embeddings 
+                self.pos_embed = get_sinusoid_encoding_table(num_patches, embed_dim)
 
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
         self.blocks = nn.ModuleList([
@@ -195,6 +267,7 @@ class PretrainVisionTransformer(nn.Module):
                  norm_layer=nn.LayerNorm, 
                  init_values=0.,
                  use_learnable_pos_emb=False,
+                 pos_emb_type='sin',
                  num_classes=0, # avoid the error from create_fn in timm
                  in_chans=0, # avoid the error from create_fn in timm
                  ):
@@ -215,7 +288,8 @@ class PretrainVisionTransformer(nn.Module):
             drop_path_rate=drop_path_rate, 
             norm_layer=norm_layer, 
             init_values=init_values,
-            use_learnable_pos_emb=use_learnable_pos_emb)
+            use_learnable_pos_emb=use_learnable_pos_emb,
+            pos_emb_type=pos_emb_type)
 
         self.decoder = PretrainVisionTransformerDecoder(
             patch_size=patch_size, 
@@ -237,7 +311,13 @@ class PretrainVisionTransformer(nn.Module):
 
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
-        self.pos_embed = get_sinusoid_encoding_table(self.encoder.patch_embed.num_patches, decoder_embed_dim)
+        num_patches = self.encoder.patch_embed.num_patches
+        if pos_emb_type == 'aaud':
+            self.pos_embed = get_area_encoding(num_patches, decoder_embed_dim, mode='aaud')
+        if pos_emb_type == 'naive':  
+            self.pos_embed = get_area_encoding(num_patches, decoder_embed_dim, mode='naive', img_size=img_size)
+        elif pos_emb_type == 'sin':
+            self.pos_embed = get_sinusoid_encoding_table(num_patches, decoder_embed_dim)
 
         trunc_normal_(self.mask_token, std=.02)
 
@@ -343,6 +423,110 @@ def pretrain_mae_large_patch16_224(pretrained=False, **kwargs):
         mlp_ratio=4, 
         qkv_bias=True,
         norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_small_patch16_224_with_aaud(pretrained=False, **kwargs):
+    model = PretrainVisionTransformer(
+        img_size=224,
+        patch_size=16,
+        encoder_embed_dim=384,
+        encoder_depth=12,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=768,
+        decoder_embed_dim=192,
+        decoder_depth=4,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        pos_emb_type='aaud',
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_base_patch16_224_with_aaud(pretrained=False, **kwargs):
+    model = PretrainVisionTransformer(
+        img_size=224,
+        patch_size=16, 
+        encoder_embed_dim=768, 
+        encoder_depth=12, 
+        encoder_num_heads=12,
+        encoder_num_classes=0,
+        decoder_num_classes=768,
+        decoder_embed_dim=384,
+        decoder_depth=4,
+        decoder_num_heads=6,
+        mlp_ratio=4, 
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        pos_emb_type='aaud',
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_small_patch16_224_with_naive_ae(pretrained=False, **kwargs):
+    model = PretrainVisionTransformer(
+        img_size=224,
+        patch_size=16,
+        encoder_embed_dim=384,
+        encoder_depth=12,
+        encoder_num_heads=6,
+        encoder_num_classes=0,
+        decoder_num_classes=768,
+        decoder_embed_dim=192,
+        decoder_depth=4,
+        decoder_num_heads=3,
+        mlp_ratio=4,
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        pos_emb_type='naive',
+        **kwargs)
+    model.default_cfg = _cfg()
+    if pretrained:
+        checkpoint = torch.load(
+            kwargs["init_ckpt"], map_location="cpu"
+        )
+        model.load_state_dict(checkpoint["model"])
+    return model
+
+@register_model
+def pretrain_mae_base_patch16_224_with_naive_ae(pretrained=False, **kwargs):
+    model = PretrainVisionTransformer(
+        img_size=224,
+        patch_size=16, 
+        encoder_embed_dim=768, 
+        encoder_depth=12, 
+        encoder_num_heads=12,
+        encoder_num_classes=0,
+        decoder_num_classes=768,
+        decoder_embed_dim=384,
+        decoder_depth=4,
+        decoder_num_heads=6,
+        mlp_ratio=4, 
+        qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), 
+        pos_emb_type='naive',
         **kwargs)
     model.default_cfg = _cfg()
     if pretrained:
